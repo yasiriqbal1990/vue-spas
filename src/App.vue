@@ -1,32 +1,100 @@
 <template>
   <div id="app">
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
-    </div>
-    <router-view />
+    <Navigation :user="user" @logout="logout" />
+
+    <router-view class="container" :user="user" :meetings="meetings" @logout="logout" 
+    @addMeeting="addMeeting" @deleteMeeting='deleteMeeting' />
+    
   </div>
-</template>
+</template> 
+
+<script>
+import Navigation from "@/components/Navigation.vue";
+import Firebase from "firebase";
+import db from "./db.js";
+export default {
+  name:"app",
+    data(){
+    return{
+       user:null,
+       meetings:[]
+    }
+  },
+  methods:{
+     
+     logout(){
+       Firebase.auth().signOut().then(()=>{
+         this.user = null;
+         this.$router.push('login');
+       });
+     },
+     addMeeting(payload){
+       db.collection('users').doc(this.user.uid)
+       .collection("meetings")
+       .add({
+            name:payload,
+            createAdd: Firebase.firestore.FieldValue.serverTimestamp(),
+       });
+               
+
+     },
+     deleteMeeting(payload)
+     {
+           db.collection("users")
+           .doc(this.user.uid)
+           .collection('meetings')
+           .doc(payload)
+           .delete();
+     }
+  },
+  mounted(){
+     Firebase.auth().onAuthStateChanged(user=>{
+        if(user)
+        {
+          this.user=user;
+    db.collection("users").doc(this.user.uid).collection("meetings")
+    .onSnapshot(snapshot=>{
+      const snapData =[];
+      snapshot.forEach(doc=> {
+        snapData.push({
+          id: doc.id,
+          name: doc.data().name
+        });
+      });
+       this.meetings = snapData.sort((a,b)=>{
+        if(a.name.toLowerCase() < b.name.toLowerCase())
+        {
+          return -1;
+        }
+        else
+        {
+          return 1;
+        }
+      });
+    });
+        }
+
+     });
+    // db.collection("users").doc("gEhzfXDvYvaMFOgzdvSj").get()
+    // .then(snapshot=>{
+    //          this.user = snapshot.data().name;
+    // });
+
+  },
+    components:{
+    Navigation,
+    
+  },
+  
+}
+</script>
 
 <style lang="scss">
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-}
+$primary:#05b2dd;
+@import "node_modules/bootstrap/scss/bootstrap";
 
-#nav {
-  padding: 30px;
 
-  a {
-    font-weight: bold;
-    color: #2c3e50;
 
-    &.router-link-exact-active {
-      color: #42b983;
-    }
-  }
-}
+
+
 </style>
